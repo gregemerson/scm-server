@@ -1,0 +1,45 @@
+{
+  "name": "Subscription",
+  "base": "PersistedModel",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "expires": {
+      "type": "date"
+    },
+    "kind": {
+      "type": "number",
+      "required": true,
+      "default": 1
+    },
+    "maxExerciseSets": {
+      "type": "number",
+      "default": 2
+    }
+  },
+  "validations": [],
+  "relations": {
+    "client": {
+      "type": "belongsTo",
+      "model": "Client",
+      "foreignKey": ""
+    }   
+  },
+  "acls": [
+      {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "DENY"
+    },
+    {
+      "accessType": "READ",
+      "principalType": "ROLE",
+      "principalId": "$owner",
+      "permission": "ALLOW"
+    }
+  ],
+  "methods": {}
+}

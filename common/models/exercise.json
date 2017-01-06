@@ -1,0 +1,87 @@
+{
+  "name": "Exercise",
+  "plural": "Exercises",
+  "base": "PersistedModel",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "created": {
+      "type": "Date",
+      "required": false
+    },
+    "name": {
+      "type": "string",
+      "required": false,
+      "default": "Unnamed"
+    },
+    "notation": {
+      "type": "string",
+      "required": false,
+      "default": "#"
+    },
+    "category": {
+      "type": "string",
+      "required": false,
+      "default": "Uncategorized"
+    },
+    "comments": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "validations": [],
+  "relations": {
+    "exerciseSet": {
+      "type": "belongsTo",
+      "model": "ExerciseSet",
+      "foreignKey": ""
+    }
+  },
+  "acls": [
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "administrator",
+      "permission": "ALLOW",
+      "model": "ExerciseSet"
+    },
+    {
+      "accessType": "READ",
+      "principalType": "ROLE",
+      "principalId": "$authenticated",
+      "permission": "ALLOW",
+      "model": "Exercise"
+    },
+    {
+      "accessType": "EXECUTE",
+      "principalType": "ROLE",
+      "principalId": "$authenticated",
+      "permission": "ALLOW",
+      "model": "Exercise"
+    },
+    {
+      "accessType": "WRITE",
+      "principalType": "ROLE",
+      "principalId": "guest",
+      "permission": "DENY",
+      "model": "Exercise"
+    },
+    {
+      "accessType": "EXECUTE",
+      "principalType": "ROLE",
+      "principalId": "guest",
+      "permission": "DENY",
+      "model": "Exercise"
+    },
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "$unauthenticated",
+      "permission": "DENY",
+      "model": "Exercise"
+    }
+  ],
+  "methods": {}
+}

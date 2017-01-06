@@ -1,0 +1,68 @@
+{
+  "_meta": {
+    "sources": [
+      "loopback/common/models",
+      "loopback/server/models",
+      "../common/models",
+      "./models"
+    ],
+    "mixins": [
+      "loopback/common/mixins",
+      "loopback/server/mixins",
+      "../common/mixins",
+      "./mixins"
+    ]
+  },
+  "User": {
+    "dataSource": "mysqlDs",
+    "emailVerificationRequired": true
+  },
+  "AccessToken": {
+    "dataSource": "mysqlDs",
+    "public": false
+  },
+  "ACL": {
+    "dataSource": "mysqlDs",
+    "public": false
+  },
+  "RoleMapping": {
+    "dataSource": "mysqlDs",
+    "public": false
+  },
+  "Role": {
+    "dataSource": "mysqlDs",
+    "public": false
+  },
+  "PublicResource": {
+    "dataSource": "mysqlDs",
+    "public": true
+  },
+  "Client": {
+    "dataSource": "mysqlDs",
+    "public": true
+  },
+  "Exercise": {
+    "dataSource": "mysqlDs",
+    "public": true
+  },
+  "ExerciseSet": {
+    "dataSource": "mysqlDs",
+    "public": true
+  },
+  "UserSettings": {
+    "dataSource": "mysqlDs",
+    "public": false
+  },
+  "ClientExerciseSet": {
+    "dataSource": "mysqlDs",
+    "public": false
+  },
+  "SharedExerciseSet": {
+    "dataSource": "mysqlDs",
+    "public": false
+  },
+  "Subscription": {
+    "dataSource": null,
+    "public": false
+  }
+}

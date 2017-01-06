@@ -1,0 +1,11 @@
+{
+  "mysqlDs": {
+    "host": "localhost",
+    "port": 3306,
+    "database": "scm_v1",
+    "username": "stick-ctrl",
+    "password": "Galois912?",
+    "name": "mysqlDs",
+    "connector": "mysql"
+  }
+}

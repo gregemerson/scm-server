@@ -1,0 +1,33 @@
+{
+  "name": "ClientExerciseSet",
+  "base": "PersistedModel",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "exerciseSetId": {
+      "type": "number",
+      "default": 0
+    },
+    "clientId": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "validations": [],
+  "relations": {
+    "clients": {
+      "type": "belongsTo",
+      "model": "Client",
+      "foreignKey": "clientId"
+    },
+    "exerciseSets": {
+      "type": "belongsTo",
+      "model": "ExerciseSet",
+      "foreignKey": "exerciseSetId"
+    }
+  },
+  "acls": [],
+  "methods": {}
+}

@@ -1,0 +1,48 @@
+{
+  "name": "SharedExerciseSet",
+  "base": "PersistedModel",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "exerciseSetId": {
+      "type": "number",
+      "required": true,
+      "default": 0
+    },
+    "receiverId": {
+      "type": "number",
+      "required": true,
+      "default": 0
+    },
+    "sharerId": {
+      "type": "number",
+      "required": true,
+      "default": 0
+    },
+    "created": {
+      "type": "date",
+      "default": "1900-01-01 00:00:00"
+    },
+    "comments": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "validations": [],
+  "relations": {
+    "sharer": {
+      "type": "belongsTo",
+      "model": "Client",
+      "foreignKey": "sharerId"
+    },
+    "receiver": {
+      "type": "belongsTo",
+      "model": "Client",
+      "foreignKey": "receiverId"
+    }
+  },
+  "acls": [],
+  "methods": {}
+}

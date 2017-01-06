@@ -1,0 +1,95 @@
+{
+  "name": "Client",
+  "base": "User",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true,
+    "emailVerificationRequired": true
+  },
+  "comments": "Guests are never explicitly logged in or out.  Credentials stored on client.",
+  "properties": {
+    "created": {
+      "type": "Date",
+      "required": false,
+      "default": "1900-01-01 00:00:00"
+    },
+    "username": {
+      "type": "string",
+      "required": false
+    },
+    "membershipExpiry": {
+      "type": "Date",
+      "required": false,
+      "default": "1900-01-01 00:00:00"
+    }
+  },
+  "validations": [],
+  "relations": {
+    "userSettings": {
+      "type": "hasOne",
+      "model": "UserSettings",
+      "foreignKey": ""
+    },
+    "subscription": {
+      "type": "hasOne",
+      "model": "Subscription",
+      "foreignKey": ""
+    },
+    "exerciseSets": {
+      "type": "hasMany",
+      "model": "ExerciseSet",
+      "foreignKey": "",
+      "through": "ClientExerciseSet"
+    },
+    "receivedExerciseSets": {
+      "type": "hasAndBelongsToMany",
+      "model": "ExerciseSet",
+      "foreignKey": "receiverId",
+      "through": "SharedExerciseSet"
+    },
+    "sharedExerciseSets": {
+      "type": "hasAndBelongsToMany",
+      "model": "ExerciseSet",
+      "foreignKey": "sharerId",
+      "through": "SharedExerciseSet"
+    }
+  },
+  "acls": [
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "administrator",
+      "permission": "ALLOW"
+    },
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "$owner",
+      "permission": "ALLOW"
+    },
+    {
+      "accessType": "EXECUTE",
+      "principalType": "ROLE",
+      "principalId": "guest",
+      "permission": "DENY",
+      "property": "logout",
+      "model": "Client"
+    },
+    {
+      "accessType": "EXECUTE",
+      "principalType": "ROLE",
+      "principalId": "guest",
+      "permission": "DENY",
+      "property": "login",
+      "model": "Client"
+    },
+    {
+      "accessType": "EXECUTE",
+      "principalType": "ROLE",
+      "principalId": "$unauthenticated",
+      "permission": "ALLOW",
+      "property": "createNewUser"
+    }
+  ],
+  "methods": {}
+}
