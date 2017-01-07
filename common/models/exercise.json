@@ -45,7 +45,7 @@
       "principalType": "ROLE",
       "principalId": "administrator",
       "permission": "ALLOW",
-      "model": "ExerciseSet"
+      "model": "Exercise"
     },
     {
       "accessType": "READ",

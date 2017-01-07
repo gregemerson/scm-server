@@ -7,7 +7,8 @@ Constraints.prototype.exercise = {
     maxCategoryLength: 100,
     maxExerciseCommentsLength: 100,
     maxExerciseSetCommentsLength: 200,
-    maxSharedExerciseComments: 100
+    maxSharedExerciseComments: 100,
+    maxPerExerciseSet: 30
 }
 
 Constraints.prototype.email = {
@@ -18,6 +19,11 @@ Constraints.prototype.email = {
 Constraints.prototype.user = {
     minUserNameLength: 5,
     maxUserNameLength: 20
+}
+
+Constraints.prototype.exerciseSets = {
+    maxNoSubscription: 3,
+    maxHasSubscription: 100
 }
 
 module.exports = new Constraints();

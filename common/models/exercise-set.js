@@ -1,5 +1,4 @@
 
-
 module.exports = function(Exerciseset) {
     var app = require('../../server/server');
     var constraints = require('../constraints');
@@ -14,12 +13,14 @@ module.exports = function(Exerciseset) {
         ctx.req.body['created'] = new Date();
         ctx.req.body['ownerId'] = ctx.req.accessToken.userId;
         next();
-    });   
+    });
+
+    Exerciseset.beforeRemote('create', function(ctx, instance, next) {
+        // @todo Limit number of exercise sets here
+    });
 
     // Set the new set as currentExerciseSet
     Exerciseset.afterRemote('create', function(ctx, exerciseSet, next) {
-        // @todo Limit number of exercise sets here
-
         app.models.Usersettings.find(
             {where: {clientId: ctx.req.accessToken.userId}},
                 function(err, settings) { 
@@ -41,6 +42,7 @@ module.exports = function(Exerciseset) {
         return cb(err);
     }
 
+    // Post (create) new exercise in this exercise set
     Exerciseset.createdExercises = function(id, data, cb) {
         Exerciseset.beginTransaction({}, function(err, tx) {
             try {
