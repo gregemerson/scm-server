@@ -62,7 +62,7 @@
     "public": false
   },
   "Subscription": {
-    "dataSource": null,
+    "dataSource": "mysqlDs",
     "public": false
   }
 }

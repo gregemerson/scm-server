@@ -115,6 +115,13 @@ module.exports = function(Client) {
         this.tempoStep = 10;       
     }
 
+    Client.initialSubscription = function(clientId) {
+        this.clientId = clientId;
+        this.expires = new Date();
+        this.kind = 1;
+        this.maxExerciseSets = 3;
+    }
+
     Client.remoteMethod(
         'createNewUser',
         {
@@ -153,15 +160,19 @@ module.exports = function(Client) {
                             settings.currentExerciseSet = sets[0].id;
                         }
                         Client.addExerciseSets(client, sets, err, tx, function(err) {
-                            if (err) return Client.rollbackOnError(err, tx, cb);                            
-                            app.models.UserSettings.create(settings, function(err, instance) {
+                            if (err) return Client.rollbackOnError(err, tx, cb);
+                            app.models.Subscription.create(Client.initialSubscription(client.id), 
+                                function(err, instance) {
                                 if (err) return Client.rollbackOnError(err, tx, cb);
-                                var userInfo = {
-                                    id: client.id
-                                }
-                                tx.commit();
-                                return cb(null, userInfo);
-                            });
+                                app.models.UserSettings.create(settings, function(err, instance) {
+                                    if (err) return Client.rollbackOnError(err, tx, cb);
+                                    var userInfo = {
+                                        id: client.id
+                                    }
+                                    tx.commit();
+                                    return cb(null, userInfo);
+                                });
+                            })                          
                         });
                     });                     
                 });
