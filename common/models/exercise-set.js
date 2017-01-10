@@ -37,34 +37,55 @@ module.exports = function(Exerciseset) {
         next();
     });
 */
-    Exerciseset.rb = function(err, tx, cb) {
-        tx.rollback();
-        return cb(err);
+    Exerciseset.rollback = function(err, tx, cb) {
+        if (tx) tx.rollback();
+        var error = new Error();
+        error.status = 400;
+        error.message = err;
+        return cb(error);
     }
 
     // Post (create) new exercise in this exercise set
     Exerciseset.createdExercises = function(id, data, cb) {
-        /*
+        data.created = Date.now();
+        var limit = Constraints.exercise.maxPerExerciseSet;
+        var es = null;
+        var ex = null;
+        var tx = null;
         try {
-        
-        var error = new Error();
-        error.status = 400;
-        error.message = 'testing';
-        app.models.Exercise.count({exerciseSetId: 1}).then((result) => {
-            console.log('number of exercises is ' + result);
-            cb(error);
-
-        }, (err) => {
-            console.log('error was: ' + err);
-            cb(error);
-        });
-    
+            app.models.Exercise.count({exerciseSetId: 1})
+            .then((result) => {
+                if (result >= limit) {
+                    return Promise.reject('No more exercises can be added');
+                }
+                return Exerciseset.beginTransaction({});
+            })
+            .then((transaction) => {
+                tx = transaction;
+                return Exerciseset.findById(id);
+            })
+            .then((exerciseSet) => {
+                es = exerciseSet;
+                return exerciseSet.exercises.create(data, {transaction: tx});
+            })
+            .then((exercise) => {
+                ex = exercise;
+                let ordering = JSON.parse(es.exerciseOrdering);
+                ordering.push(exercise.id);
+                es.exerciseOrdering = JSON.stringify(ordering);
+                return es.save({transaction: tx});         
+            })
+            .then((set) => {
+                return tx.commit();
+            })
+            .catch((reason) => {
+                Exerciseset.rollback(reason, tx, cb);
+            });            
         }
         catch (err) {
-            console.log('catch error was: ' + err);
-            cb(err);
+            Exerciseset.rollback(err.message, tx, cb);
         }
-        */
+        /*
         Exerciseset.beginTransaction({}, function(err, tx) {
             try {
                 if (err) return Exerciseset.rb(err, tx, cb);
@@ -90,6 +111,7 @@ module.exports = function(Exerciseset) {
                 Exerciseset.rb(err, tx, cb);
             }
         });
+        */
     }
      
     Exerciseset.remoteMethod(
