@@ -17,28 +17,24 @@
       "type": "string",
       "required": false
     },
-    "membershipExpiry": {
-      "type": "Date",
-      "required": false,
-      "default": "1900-01-01 00:00:00"
+    "password": {
+      "type": "string",
+      "required": false
     }
   },
   "validations": [],
   "relations": {
     "userSettings": {
       "type": "hasOne",
-      "model": "UserSettings",
-      "foreignKey": ""
+      "model": "UserSettings"
     },
     "subscription": {
       "type": "hasOne",
-      "model": "Subscription",
-      "foreignKey": ""
+      "model": "Subscription"
     },
     "exerciseSets": {
       "type": "hasMany",
       "model": "ExerciseSet",
-      "foreignKey": "",
       "through": "ClientExerciseSet"
     },
     "receivedExerciseSets": {
@@ -82,6 +78,13 @@
       "permission": "DENY",
       "property": "login",
       "model": "Client"
+    },
+    {
+      "accessType": "EXECUTE",
+      "principalType": "ROLE",
+      "principalId": "$unauthenticated",
+      "permission": "ALLOW",
+      "property": "login"
     },
     {
       "accessType": "EXECUTE",

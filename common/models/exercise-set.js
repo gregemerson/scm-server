@@ -44,6 +44,27 @@ module.exports = function(Exerciseset) {
 
     // Post (create) new exercise in this exercise set
     Exerciseset.createdExercises = function(id, data, cb) {
+        /*
+        try {
+        
+        var error = new Error();
+        error.status = 400;
+        error.message = 'testing';
+        app.models.Exercise.count({exerciseSetId: 1}).then((result) => {
+            console.log('number of exercises is ' + result);
+            cb(error);
+
+        }, (err) => {
+            console.log('error was: ' + err);
+            cb(error);
+        });
+    
+        }
+        catch (err) {
+            console.log('catch error was: ' + err);
+            cb(err);
+        }
+        */
         Exerciseset.beginTransaction({}, function(err, tx) {
             try {
                 if (err) return Exerciseset.rb(err, tx, cb);

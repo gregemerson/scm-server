@@ -16,9 +16,6 @@ module.exports = function(Client) {
     Client.validatesLengthOf('email', {max: constraints.email.maxEmailLength});
 
     Client.beforeRemote('create', function(ctx, instance, next) {
-        // ctx.req.body.created = new Date();
-        // ctx.req.body.lastUpdated = new Date();
-        // delete ctx.req.body.membershipExpiry;
         next(Client.createClientError('Create should not being called directly.'));
     });
 
@@ -68,7 +65,7 @@ module.exports = function(Client) {
     });
 
     Client.beforeRemote('login', function(ctx, instance, next) { 
-        // Make ttl 2 week in senconds
+        // Make ttl 2 week in seconds
         ctx.req.body.ttl = 60 * 60 * 24 * 7 * 2;
         next();
     });
@@ -106,8 +103,7 @@ module.exports = function(Client) {
         return cb(err); 
     }
 
-    Client.DefaultUserSettings = function(clientId) {
-        this.clientId = clientId;
+    Client.defaultUserSettings = function() {
         this.currentExerciseSet = -1;
         this.numberOfRepititions = 20;
         this.minTempo = 80;
@@ -115,11 +111,10 @@ module.exports = function(Client) {
         this.tempoStep = 10;       
     }
 
-    Client.initialSubscription = function(clientId) {
-        this.clientId = clientId;
-        this.expires = new Date();
+    Client.initialSubscription = function() {
+        this.expires = null;
         this.kind = 1;
-        this.maxExerciseSets = 3;
+        this.maxExerciseSets = 1;
     }
 
     Client.remoteMethod(
@@ -147,7 +142,63 @@ module.exports = function(Client) {
     Client.createNewUser = function(initializer, cb) {
         initializer.created = new Date();
         initializer.lastUpdated = new Date();
+        var sub = null;
+        var set = null;
+        var cli = null;
         var tx = null;
+        try {
+            Client.beginTransaction({timeout: 10000}, function(err, trans) {
+                if (err) return cb(err);
+                tx = trans;
+                app.models.Subscription.create(Client.initialSubscription(), {transaction: tx})
+                .then((subscription) => {
+                    sub = subscription;
+                    initializer.subscriptionId = subscription.id;
+                    return app.models.UserSettings.create(Client.defaultUserSettings(), {transaction: tx})
+                })
+                .then((settings) => {
+                    set = settings;
+                    initializer.usersettingsId = settings.id;
+                    return Client.create(initializer, {transaction: tx});
+                })
+                .then((client) => {
+                    cli = client;
+                    return set.updateAttributes({clientId: cli.id}, {transaction: tx});
+                })
+                .then((settings) => {
+                    return sub.updateAttributes({clientId: cli.id}, {transaction: tx});
+                })
+                .then((subscription) => {
+                    return app.models.ExerciseSet.find({where: {public: 1}});
+                })
+                .then((sets) => {
+                    console.log('the sets object is: ')
+                    console.dir(sets);
+                    var promises = [];
+                    sets.forEach((exerciseSet) => {
+                        promises.push(cli.exerciseSets.add(exerciseSet, {transaction: tx}));
+                    });
+                    return Promise.all(promises);
+                })
+                .then((results) => {
+                    tx.commit();
+                    return cb(null, {id: cli.id});
+                })
+                .catch((err) => {
+                    console.log(err);
+                    return Client.rollbackOnError(err, tx, cb);
+                });
+            });
+        }
+        catch (err) {
+            if (tx) {
+                return Client.rollbackOnError(err, tx, cb);
+            }
+            else {
+                return cb(err);
+            }
+        }
+        /*
         try{
             Client.beginTransaction({timeout: 10000}, function(err, trans) {
                 if (err) return cb(err);
@@ -162,10 +213,12 @@ module.exports = function(Client) {
                         Client.addExerciseSets(client, sets, err, tx, function(err) {
                             if (err) return Client.rollbackOnError(err, tx, cb);
                             app.models.Subscription.create(Client.initialSubscription(client.id), 
-                                function(err, instance) {
+                                function(err, subscription) {
                                 if (err) return Client.rollbackOnError(err, tx, cb);
-                                app.models.UserSettings.create(settings, function(err, instance) {
+                                initializer.subscriptionId = subscription.id;
+                                app.models.UserSettings.create(settings, function(err, settings) {
                                     if (err) return Client.rollbackOnError(err, tx, cb);
+                                    initializer.usersettingsId = settings.id;
                                     var userInfo = {
                                         id: client.id
                                     }
@@ -181,6 +234,7 @@ module.exports = function(Client) {
         catch (err) {
             if (tx) return Client.rollbackOnError(err, tx, cb);
         }
+        */
     }
 
     Client.remoteMethod(

@@ -8,7 +8,7 @@ Constraints.prototype.exercise = {
     maxExerciseCommentsLength: 100,
     maxExerciseSetCommentsLength: 200,
     maxSharedExerciseComments: 100,
-    maxPerExerciseSet: 30
+    maxPerExerciseSet: 24
 }
 
 Constraints.prototype.email = {
