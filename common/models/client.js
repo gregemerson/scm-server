@@ -65,8 +65,8 @@ module.exports = function(Client) {
     });
 
     Client.beforeRemote('login', function(ctx, instance, next) { 
-        // Make ttl 2 week in seconds
-        ctx.req.body.ttl = 60 * 60 * 24 * 7 * 2;
+        // Tokens expire in 200 years
+        ctx.req.body.ttl = 60 * 60 * 24 * 365 * 200;
         next();
     });
 
@@ -128,17 +128,6 @@ module.exports = function(Client) {
         }
     );
 
-    Client.addExerciseSets = function(client, exerciseSets, err, tx, done) {
-        if (exerciseSets.length > 0 && !err) {
-            client.exerciseSets.add(exerciseSets.pop(), {transaction: tx}, function(err, instance) {
-                Client.addExerciseSets(client, exerciseSets, err, tx, done);
-            });
-        }
-        else {
-            done(err);
-        }
-    }
-
     Client.createNewUser = function(initializer, cb) {
         initializer.created = new Date();
         initializer.lastUpdated = new Date();
@@ -198,43 +187,6 @@ module.exports = function(Client) {
                 return cb(err);
             }
         }
-        /*
-        try{
-            Client.beginTransaction({timeout: 10000}, function(err, trans) {
-                if (err) return cb(err);
-                tx = trans;
-                Client.create(initializer, {transaction: tx}, function(err, client) {
-                    if (err) return Client.rollbackOnError(err, tx, cb);
-                    var settings = new Client.DefaultUserSettings(client.id);
-                    app.models.ExerciseSet.find({where: {public: 1}}, function(err, sets) {
-                        if (sets.length > 0) {
-                            settings.currentExerciseSet = sets[0].id;
-                        }
-                        Client.addExerciseSets(client, sets, err, tx, function(err) {
-                            if (err) return Client.rollbackOnError(err, tx, cb);
-                            app.models.Subscription.create(Client.initialSubscription(client.id), 
-                                function(err, subscription) {
-                                if (err) return Client.rollbackOnError(err, tx, cb);
-                                initializer.subscriptionId = subscription.id;
-                                app.models.UserSettings.create(settings, function(err, settings) {
-                                    if (err) return Client.rollbackOnError(err, tx, cb);
-                                    initializer.usersettingsId = settings.id;
-                                    var userInfo = {
-                                        id: client.id
-                                    }
-                                    tx.commit();
-                                    return cb(null, userInfo);
-                                });
-                            })                          
-                        });
-                    });                     
-                });
-            });
-        }
-        catch (err) {
-            if (tx) return Client.rollbackOnError(err, tx, cb);
-        }
-        */
     }
 
     Client.remoteMethod(
