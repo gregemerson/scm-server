@@ -4,7 +4,7 @@
     "port": 3306,
     "database": "scm_v1",
     "username": "stick-ctrl",
-    "password": "Galois912?",
+    "password": "Thrackle912?",
     "name": "mysqlDs",
     "connector": "mysql"
   }

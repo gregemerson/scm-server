@@ -18,7 +18,8 @@ Constraints.prototype.email = {
 
 Constraints.prototype.user = {
     minUserNameLength: 5,
-    maxUserNameLength: 20
+    maxUserNameLength: 20,
+    guestUsername: 'guest'
 }
 
 Constraints.prototype.exerciseSets = {

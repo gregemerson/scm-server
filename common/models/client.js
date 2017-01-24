@@ -91,6 +91,63 @@ module.exports = function(Client) {
         next();
     });
 
+    Client.afterRemote('findById', (ctx, client, next) => {
+        var receivedSetToClient = {};
+        var sharedSetToClient = {};
+        var clientIds = [];
+        app.models.SharedExerciseSet.find({where: {receiverId: user.id}})
+        .then((received) => {
+            received.forEach((share) => {
+                clientIds.push(share.sharerId);
+                receivedSetToClient[share.exerciseSetId] = share.sharerId;
+            });
+            return app.models.SharedExerciseSet.find({where: {sharer: user.id}});
+        })
+        .then((shared) => {
+            shared.forEach((share) => {
+                clientIds.push(share.sharerId);
+                sharedSetToClient[share.exerciseSetId] = share.receiverId;
+            });
+            return Client.idsToUserNames(clientIds);
+        })
+        .then((clientIdToUserName) => {
+            client.receivedExerciseSets.forEach((set) => {
+                set['username'] = clientIdToUserName[receivedSetToClient[set.id]];
+                Client.removeNonDescriptorProps(set);
+            });
+            client.sharedExerciseSets.forEach((set) => {
+                set['username'] = clientIdToUserName[sharedSetToClient[set.id]];
+                Client.removeNonDescriptorProps(set);
+            });
+            next();
+            return Promise.resolve();
+        })
+        .catch((err) => {
+            // @todo logging
+            next(new Error('Could not construct share lists'));
+        });
+    });
+
+    Client.removeNonDescriptorProps = (exerciseSet) => {
+        delete exerciseSet.created;
+        delete exerciseSet.disabledExercises;
+        delete exerciseSet.exerciseOrdering;
+    }
+
+    Client.idsToUserNames = function(ids) {
+        return Client.find({
+            where: {id: {inq: ids}},
+            fields: {id: true, username: true}
+        })
+        .then((usernames) => {
+            var map = {};
+            usernames.forEach(function(value) {
+                map[value.id] = value.username;
+            })
+            return Promise.resolve(map);
+        });
+    }
+
     Client.createClientError = function(message) {
         var error = new Error();
         error.status = 400;
@@ -203,11 +260,11 @@ module.exports = function(Client) {
 
     Client.sharedExerciseSets = function(sharerId, shareIn, cb) {
         try {
-            if (shareIn.receiverEmail == constraints.email.guest) {
+            if (shareIn.receiverName == constraints.user.guestUsername) {
                 return cb(Client.createClientError("Cannot share with guest"));
             }
             shareIn.created = Date.now();
-            Client.findOne({where: {email: shareIn.receiverEmail}}, function(err, receiver){
+            Client.findOne({where: {username: shareIn.receiverName}}, function(err, receiver){
                 if (err) return cb(err);
                 if (!receiver) {
                     return cb(Client.createClientError("User does not exist"));
@@ -215,7 +272,7 @@ module.exports = function(Client) {
                 shareIn.receiverId = receiver.id;
                 Client.findOne({where: {id: sharerId}}, function(err, sharer) {
                     if (err) return cb(err);
-                    if (sharer.email == constraints.email.guest) {
+                    if (sharer.username == constraints.user.guestUsername) {
                         return cb(Client.createClientError("Guest cannot share"));
                     }
                     sharer.exerciseSets.findOne({where: {id: shareIn.exerciseSetId}}, function(err, exerciseSet) {
