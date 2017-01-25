@@ -124,6 +124,8 @@ module.exports = function(Client) {
         })
         .catch((err) => {
             // @todo logging
+            console.log('Error in creating share lists');
+            console.dir(err);
             next(new Error('Could not construct share lists'));
         });
     });

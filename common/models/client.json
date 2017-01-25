@@ -38,13 +38,13 @@
       "through": "ClientExerciseSet"
     },
     "receivedExerciseSets": {
-      "type": "hasAndBelongsToMany",
+      "type": "hasMany",
       "model": "ExerciseSet",
       "foreignKey": "receiverId",
       "through": "SharedExerciseSet"
     },
     "sharedExerciseSets": {
-      "type": "hasAndBelongsToMany",
+      "type": "hasMany",
       "model": "ExerciseSet",
       "foreignKey": "sharerId",
       "through": "SharedExerciseSet"

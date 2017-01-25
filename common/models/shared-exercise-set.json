@@ -41,6 +41,11 @@
       "type": "belongsTo",
       "model": "Client",
       "foreignKey": "receiverId"
+    },
+    "exerciseSet": {
+      "type": "belongsTo",
+      "model": "ExerciseSet",
+      "foreignKey": "exerciseSetId"
     }
   },
   "acls": [],
