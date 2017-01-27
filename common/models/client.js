@@ -92,45 +92,73 @@ module.exports = function(Client) {
     });
 
     Client.afterRemote('findById', (ctx, client, next) => {
-        var receivedSetToClient = {};
-        var sharedSetToClient = {};
-        var clientIds = [];
-        app.models.SharedExerciseSet.find({where: {receiverId: user.id}})
-        .then((received) => {
-            received.forEach((share) => {
-                clientIds.push(share.sharerId);
-                receivedSetToClient[share.exerciseSetId] = share.sharerId;
+        try {
+            var receivedSetToClient = {};
+            var sharedSetToClient = {};
+            var clientIds = [];
+            var clientToUserName = {};
+            var receivedExerciseSets = [];
+            var sharedExerciseSets = [];
+        app.models.SharedExerciseSet.find({where: {or: [{receiverId: client.id}, {sharerId: client.id}]}})
+            .then((shares) => {
+                shares.forEach((share) => {
+                    clientIds.push(share.sharerId);
+                    if (share.receiverId == client.id) {
+                        // Who shared with client
+                        receivedSetToClient[share.exerciseSetId] = share.sharerId;
+                    }
+                    else {
+                        // With whom did client share
+                        sharedSetToClient[share.exerciseSetId] = share.receiverId;
+                    }
+                });
+            })
+            .then(() => Client.idsToUserNames(clientIds))
+            .then((clientIdToName) => {
+                clientIdToUserName = clientIdToName;
+                console.log('mappings')
+                console.dir(clientIdToName)
+                console.dir(receivedSetToClient)
+                console.dir(sharedSetToClient)
+                return client.receivedExerciseSets({});
+            })
+            .then((sets) => {
+                console.log('received exercise sets')
+                console.dir(sets)
+                sets.forEach((set) => {
+                    Client.toExerciseSetDescriptor(set,
+                        clientIdToUserName[receivedSetToClient[set.id]]);
+                });
+                ctx.result.__data['receivedExerciseSets'] = sets;
+                return client.sharedExerciseSets({});
+            })
+            .then((sets) => {
+                sets.forEach((set) => {
+                    Client.toExerciseSetDescriptor(set,
+                        clientIdToUserName[sharedExerciseSets[set.id]]);
+                });
+                ctx.result.__data['sharedExerciseSets'] = sets;
+                next();
+                console.log('the result is ')
+                console.dir(ctx.result)
+                return Promise.resolve();            
+            })
+            .catch((err) => {
+                // @todo logging
+                console.log('Error in creating share lists');
+                console.dir(err);
+                next(new Error('Could not construct share lists'));
             });
-            return app.models.SharedExerciseSet.find({where: {sharer: user.id}});
-        })
-        .then((shared) => {
-            shared.forEach((share) => {
-                clientIds.push(share.sharerId);
-                sharedSetToClient[share.exerciseSetId] = share.receiverId;
-            });
-            return Client.idsToUserNames(clientIds);
-        })
-        .then((clientIdToUserName) => {
-            client.receivedExerciseSets.forEach((set) => {
-                set['username'] = clientIdToUserName[receivedSetToClient[set.id]];
-                Client.removeNonDescriptorProps(set);
-            });
-            client.sharedExerciseSets.forEach((set) => {
-                set['username'] = clientIdToUserName[sharedSetToClient[set.id]];
-                Client.removeNonDescriptorProps(set);
-            });
-            next();
-            return Promise.resolve();
-        })
-        .catch((err) => {
-            // @todo logging
-            console.log('Error in creating share lists');
+        }
+        catch(err) {
+            console.log('Exeption thrown');
             console.dir(err);
-            next(new Error('Could not construct share lists'));
-        });
+            next(err);           
+        }
     });
 
-    Client.removeNonDescriptorProps = (exerciseSet) => {
+    Client.toExerciseSetDescriptor = (exerciseSet, username) => {
+        exerciseSet['username'] = username;
         delete exerciseSet.created;
         delete exerciseSet.disabledExercises;
         delete exerciseSet.exerciseOrdering;
@@ -262,6 +290,7 @@ module.exports = function(Client) {
 
     Client.sharedExerciseSets = function(sharerId, shareIn, cb) {
         try {
+            var sharedExerciseSet;
             if (shareIn.receiverName == constraints.user.guestUsername) {
                 return cb(Client.createClientError("Cannot share with guest"));
             }
@@ -283,6 +312,7 @@ module.exports = function(Client) {
                             return cb(Client.createClientError(
                                 'Sharer does not have the exercise set'));
                         }
+                        sharedExerciseSet = exerciseSet;
                         app.models.SharedExerciseSet.findOne({where: {
                             exerciseSetId: shareIn.exerciseSetId,
                             sharerId: sharerId,
@@ -294,7 +324,7 @@ module.exports = function(Client) {
                             }
                             app.models.SharedExerciseSet.create(shareIn, function(err, instance) {
                                 if (err) return cb(err);
-                                return cb(instance);
+                                return cb(Client.toExerciseSetDescriptor(sharedExerciseSet));
                             });
                         });
                     });
