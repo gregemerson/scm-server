@@ -1,7 +1,8 @@
 /*
-    Business Rules.
-    - Clients can have only one access token at a time. Tokens time-out in 2 weeks
-    - Guests cannot login or logout and the guest access token (virtually) never expires
+    Business Rules of Note.
+    - Access token don't (virtually) expire.
+    - Clients can have only one access token at a time.
+    - Guests cannot login or logout and have only read access throughout
     - When no client references an exercise set, the set will be deleted
     - 
 */
@@ -99,7 +100,7 @@ module.exports = function(Client) {
             var clientToUserName = {};
             var receivedExerciseSets = [];
             var sharedExerciseSets = [];
-        app.models.SharedExerciseSet.find({where: {or: [{receiverId: client.id}, {sharerId: client.id}]}})
+            app.models.SharedExerciseSet.find({where: {or: [{receiverId: client.id}, {sharerId: client.id}]}})
             .then((shares) => {
                 shares.forEach((share) => {
                     clientIds.push(share.sharerId);
@@ -120,7 +121,7 @@ module.exports = function(Client) {
             })
             .then((sets) => {
                 sets.forEach((set) => {
-                    Client.toExerciseSetDescriptor(set,
+                    Client.toShareDescriptor(set,
                         clientIdToUserName[receivedSetToClient[set.id]]);
                 });
                 ctx.result.__data['receivedExerciseSets'] = sets;
@@ -128,7 +129,7 @@ module.exports = function(Client) {
             })
             .then((sets) => {
                 sets.forEach((set) => {
-                    Client.toExerciseSetDescriptor(set,
+                    Client.toShareDescriptor(set,
                         clientIdToUserName[sharedExerciseSets[set.id]]);
                 });
                 ctx.result.__data['sharedExerciseSets'] = sets;
@@ -147,7 +148,7 @@ module.exports = function(Client) {
         }
     });
 
-    Client.toExerciseSetDescriptor = (exerciseSet, username) => {
+    Client.toShareDescriptor = (exerciseSet, username) => {
         exerciseSet['username'] = username;
         delete exerciseSet.created;
         delete exerciseSet.disabledExercises;
@@ -191,7 +192,7 @@ module.exports = function(Client) {
     Client.initialSubscription = function() {
         this.expires = null;
         this.kind = 1;
-        this.maxExerciseSets = 1;
+        this.maxExerciseSets = 2;
     }
 
     Client.remoteMethod(
@@ -316,7 +317,7 @@ module.exports = function(Client) {
                             }
                             app.models.SharedExerciseSet.create(shareIn, function(err, instance) {
                                 if (err) return cb(err);
-                                return cb(Client.toExerciseSetDescriptor(sharedExerciseSet));
+                                return cb(Client.toShareDescriptor(sharedExerciseSet));
                             });
                         });
                     });
