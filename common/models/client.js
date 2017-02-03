@@ -380,16 +380,17 @@ module.exports = function(Client) {
                 return client.receivedExerciseSets.findOne({where: {id: exerciseSetId}});
             })
             .then((exerciseSet) => {
-                receiver.exerciseSets.add(exerciseSet);
-                return Promise.resolve();
+                return receiver.exerciseSets.add(exerciseSet);
             })
-            .then(() => {
-                app.models.SharedExerciseSet.destroyAll({
+            .then((resolved) => {
+                return app.models.SharedExerciseSet.destroyAll({
                     where: {
                         receiverId: clientId,
                         exerciseSetId: exerciseSetId
                     }
                 })
+            })
+            .then((resolved) => {
                 cb();
                 return Promise.resolve();
             })
