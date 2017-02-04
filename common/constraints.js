@@ -27,6 +27,8 @@ Constraints.prototype.exerciseSets = {
     maxHasSubscription: 100
 }
 
+// Need to pass all constraints to the client as json
+
 module.exports = new Constraints();
 
 

@@ -92,15 +92,30 @@ module.exports = function(Client) {
         next();
     });
 
-    Client.afterRemote('findById', (ctx, client, next) => {
+    Client.remoteMethod(
+        'sharedExerciseSets',
+        {
+          accepts: [
+              {arg: 'clientId', type: 'number', required: true},
+              {arg: 'receivedOnly', type: 'number', required: true},
+              {arg: 'data', type: 'Object', http: {source: 'body'}, required: true}
+            ],
+            http: {path: '/:sharerId/sharedExerciseSets/:receivedOnly', verb: 'get'},
+            returns: {arg: 'share', type: 'Object'}
+        }
+    );
+
+    Client.sharedExerciseSets = (clientId, receivedOnly, cb) => {
         try {
+            var whereClause = receivedOnly ? {receiverId: client.id} : 
+                {where: {or: [{receiverId: client.id}, {sharerId: client.id}]}};
             var receivedSetToClient = {};
             var sharedSetToClient = {};
             var clientIds = [];
             var clientToUserName = {};
             var receivedExerciseSets = [];
             var sharedExerciseSets = [];
-            app.models.SharedExerciseSet.find({where: {or: [{receiverId: client.id}, {sharerId: client.id}]}})
+            app.models.SharedExerciseSet.find({where: whereClause})
             .then((shares) => {
                 shares.forEach((share) => {
                     clientIds.push(share.sharerId);
@@ -133,18 +148,18 @@ module.exports = function(Client) {
                         clientIdToUserName[sharedExerciseSets[set.id]]);
                 });
                 ctx.result.__data['sharedExerciseSets'] = sets;
-                next();
+                cb();
                 return Promise.resolve();            
             })
             .catch((err) => {
                 // @todo logging
-                next(new Error('Could not construct share lists'));
+                cb(new Error('Could not construct share lists'));
             });
         }
         catch(err) {
             console.log('Exeption thrown');
             console.dir(err);
-            next(err);           
+            cb(err);           
         }
     });
 
@@ -266,7 +281,7 @@ module.exports = function(Client) {
     }
 
     Client.remoteMethod(
-        'sharedExerciseSets',
+        'shareExerciseSet',
         {
           accepts: [
               {arg: 'sharerId', type: 'number', required: true},
@@ -281,7 +296,7 @@ module.exports = function(Client) {
     /   receiverName
     /   exerciseSetId
     */
-    Client.sharedExerciseSets = function(sharerId, shareIn, cb) {
+    Client.shareExerciseSet = function(sharerId, shareIn, cb) {
         try {
             var sharedExerciseSet;
             if (shareIn.receiverName == constraints.user.guestUsername) {
@@ -317,7 +332,7 @@ module.exports = function(Client) {
                             }
                             app.models.SharedExerciseSet.create(shareIn, function(err, instance) {
                                 if (err) return cb(err);
-                                return cb(Client.toShareDescriptor(sharedExerciseSet));
+                                return cb(Client.toShareDescriptor(sharedExerciseSet, shareIn.receiverName));
                             });
                         });
                     });
@@ -347,11 +362,18 @@ module.exports = function(Client) {
     */
     Client.unshareExerciseSet = function(sharerId, shareIn, cb) {
         try {
-            app.models.SharedExerciseSet.destroyAll({where: {
+            Client.findOne({
+                where: {
+                    username: shareIn.receiverName
+                }
+            })
+            .then((receiver) => {
+                return app.models.SharedExerciseSet.destroyAll({where: {
                             exerciseSetId: shareIn.exerciseSetId,
                             sharerId: sharerId,
-                            receiverId: shareIn.receiverId
-            }})
+                            receiverId: receiver.id
+                }})               
+            })
             .then((val) => cb())
             .catch((err) => cb(err)); 
         }
@@ -361,7 +383,7 @@ module.exports = function(Client) {
     }
 
     Client.remoteMethod(
-        'receiveExerciseSets',
+        'receiveExerciseSet',
         {
           accepts: [
               {arg: 'clientId', type: 'number', required: true},
@@ -372,7 +394,7 @@ module.exports = function(Client) {
         }
     );
 
-    Client.receiveExerciseSets = function(clientId, exerciseSetId, cb) {
+    Client.receiveExerciseSet = function(clientId, exerciseSetId, cb) {
         var receiver;
         try {
             Client.findById(clientId)
