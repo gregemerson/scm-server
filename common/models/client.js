@@ -107,6 +107,10 @@ module.exports = function(Client) {
 
     Client.sharedExerciseSets = (clientId, receivedOnly, cb) => {
         try {
+            result = {
+                shared: null,
+                received: null
+            };
             var whereClause = receivedOnly ? {receiverId: client.id} : 
                 {where: {or: [{receiverId: client.id}, {sharerId: client.id}]}};
             var receivedSetToClient = {};
@@ -139,7 +143,7 @@ module.exports = function(Client) {
                     Client.toShareDescriptor(set,
                         clientIdToUserName[receivedSetToClient[set.id]]);
                 });
-                ctx.result.__data['receivedExerciseSets'] = sets;
+                result.received = sets;
                 return client.sharedExerciseSets({});
             })
             .then((sets) => {
@@ -147,8 +151,8 @@ module.exports = function(Client) {
                     Client.toShareDescriptor(set,
                         clientIdToUserName[sharedExerciseSets[set.id]]);
                 });
-                ctx.result.__data['sharedExerciseSets'] = sets;
-                cb();
+                result.shared = sets;
+                cb(result);
                 return Promise.resolve();            
             })
             .catch((err) => {
@@ -161,7 +165,7 @@ module.exports = function(Client) {
             console.dir(err);
             cb(err);           
         }
-    });
+    }
 
     Client.toShareDescriptor = (exerciseSet, username) => {
         exerciseSet['username'] = username;
