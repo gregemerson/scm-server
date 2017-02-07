@@ -93,37 +93,37 @@ module.exports = function(Client) {
     });
 
     Client.remoteMethod(
-        'sharedExerciseSets',
+        'exerciseSetSharing',
         {
           accepts: [
               {arg: 'clientId', type: 'number', required: true},
-              {arg: 'receivedOnly', type: 'number', required: true},
-              {arg: 'data', type: 'Object', http: {source: 'body'}, required: true}
+              {arg: 'receivedOnly', type: 'boolean', required: true}
             ],
-            http: {path: '/:sharerId/sharedExerciseSets/:receivedOnly', verb: 'get'},
-            returns: {arg: 'share', type: 'Object'}
+            http: {path: '/:clientId/exerciseSetSharing/:receivedOnly', verb: 'get'},
+            returns: {arg: 'lists', type: 'Object'}
         }
     );
 
-    Client.sharedExerciseSets = (clientId, receivedOnly, cb) => {
+    Client.exerciseSetSharing = (clientId, receivedOnly, callback) => {
         try {
             result = {
                 shared: null,
                 received: null
             };
-            var whereClause = receivedOnly ? {receiverId: client.id} : 
-                {where: {or: [{receiverId: client.id}, {sharerId: client.id}]}};
+            var whereClause = receivedOnly ? {receiverId: clientId} : 
+                {where: {or: [{receiverId: clientId}, {sharerId: clientId}]}};
             var receivedSetToClient = {};
             var sharedSetToClient = {};
             var clientIds = [];
             var clientToUserName = {};
             var receivedExerciseSets = [];
             var sharedExerciseSets = [];
+            var client;
             app.models.SharedExerciseSet.find({where: whereClause})
             .then((shares) => {
                 shares.forEach((share) => {
                     clientIds.push(share.sharerId);
-                    if (share.receiverId == client.id) {
+                    if (share.receiverId == clientId) {
                         // Who shared with client
                         receivedSetToClient[share.exerciseSetId] = share.sharerId;
                     }
@@ -136,6 +136,10 @@ module.exports = function(Client) {
             .then(() => Client.idsToUserNames(clientIds))
             .then((clientIdToName) => {
                 clientIdToUserName = clientIdToName;
+                return Client.findById(clientId);
+            })
+            .then((result) => {
+                client = result;
                 return client.receivedExerciseSets({});
             })
             .then((sets) => {
@@ -152,26 +156,28 @@ module.exports = function(Client) {
                         clientIdToUserName[sharedExerciseSets[set.id]]);
                 });
                 result.shared = sets;
-                cb(result);
+                callback(null, result);
                 return Promise.resolve();            
             })
-            .catch((err) => {
+            .catch((err) => {         
                 // @todo logging
-                cb(new Error('Could not construct share lists'));
+                callback(new Error('Could not construct share lists'));
+                return Promise.resolve();
             });
         }
         catch(err) {
             console.log('Exeption thrown');
             console.dir(err);
-            cb(err);           
+            callback(err);           
         }
     }
 
     Client.toShareDescriptor = (exerciseSet, username) => {
-        exerciseSet['username'] = username;
-        delete exerciseSet.created;
-        delete exerciseSet.disabledExercises;
-        delete exerciseSet.exerciseOrdering;
+        exerciseSet.__data['username'] = username;
+        delete exerciseSet.__data.created;
+        delete exerciseSet.__data.disabledExercises;
+        delete exerciseSet.__data.exerciseOrdering;
+        delete exerciseSet.__data.ownerId;
     }
 
     Client.idsToUserNames = function(ids) {

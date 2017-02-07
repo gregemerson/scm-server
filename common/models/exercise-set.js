@@ -48,7 +48,7 @@ module.exports = function(Exerciseset) {
     // Post (create) new exercise in this exercise set
     Exerciseset.createdExercises = function(id, data, cb) {
         data.created = Date.now();
-        var limit = Constraints.exercise.maxPerExerciseSet;
+        var limit = constraints.exercise.maxPerExerciseSet;
         var es = null;
         var ex = null;
         var tx = null;
