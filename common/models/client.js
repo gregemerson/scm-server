@@ -25,31 +25,30 @@ module.exports = function(Client) {
         ctx.req.body['ownerId'] = ctx.req.accessToken.userId;
         next();
     });
-
-    Client.beforeRemote('*.__unlink__exerciseSets', function(ctx, emptyObj, next) {
+    
+    // Remove exercise set if no client is referencing it
+    Client.afterRemote('*.__unlink__exerciseSets', function(ctx, emptyObj, next) {
         let exerciseSetId = parseInt(ctx.req.params.fk);
-        app.models.Client.findOne(exerciseSetId, function(err, exerciseSet) {
-            if (err) {
-                next(err);
+        let exerciseSet = null;
+        app.models.ExerciseSet.findById(exerciseSetId)
+        .then((es) => {
+            exerciseSet = es;
+            return exerciseSet.clients({limit: 1});
+        })
+        .then((clients) => {
+            if (clients.length == 0) {
+                return exerciseSet.destroy();
             }
-            else {
-                exerciseSet.clients.find({limit: 1}, function(err, clients) {
-                    if (clients.length == 0) {
-                        exerciseSet.destroy(function(err) {
-                            if (err) {
-                                next(err);
-                            }
-                            else {
-                                next();
-                            }
-                        });
-                    }
-                    else {
-                        next();
-                    }
-                });
-            }
-        });
+            next();
+            return Promise.resolve();
+        })
+        .then(() => {
+            next();
+            return Promise.resolve();
+        })
+        .catch((err) => {
+            next(err);
+        })
     });
 
     // For diagnostics
@@ -400,12 +399,13 @@ module.exports = function(Client) {
               {arg: 'exerciseSetId', type: 'number', required: true}
             ],
           http: {path: '/:clientId/receivedExerciseSets/:exerciseSetId', verb: 'get'},
-          returns: {arg: 'receiveExerciseSet', type: 'Object'}
+          returns: {arg: 'receivedExerciseSet', type: 'Object'}
         }
     );
 
     Client.receiveExerciseSet = function(clientId, exerciseSetId, cb) {
         var receiver;
+        var receivedExerciseSet = null;
         try {
             Client.findById(clientId)
             .then((client) => {
@@ -413,6 +413,7 @@ module.exports = function(Client) {
                 return client.receivedExerciseSets.findOne({where: {id: exerciseSetId}});
             })
             .then((exerciseSet) => {
+                receivedExerciseSet = exerciseSet;
                 return receiver.exerciseSets.add(exerciseSet);
             })
             .then((resolved) => {
@@ -424,7 +425,7 @@ module.exports = function(Client) {
                 })
             })
             .then((resolved) => {
-                cb();
+                cb(receivedExerciseSet);
                 return Promise.resolve();
             })
             .catch((err) => {
