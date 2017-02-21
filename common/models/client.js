@@ -103,6 +103,9 @@ module.exports = function(Client) {
         }
     );
 
+    /* 
+    Get client's receivd and shared lists
+    */
     Client.exerciseSetSharing = (clientId, receivedOnly, callback) => {
         try {
             result = {
@@ -156,6 +159,8 @@ module.exports = function(Client) {
                 });
                 result.shared = sets;
                 callback(null, result);
+                console.log('returning shares ');
+                console.dir(result);''
                 return Promise.resolve();            
             })
             .catch((err) => {         
@@ -301,9 +306,8 @@ module.exports = function(Client) {
         }
     );
 
-    /* shareIn is an object containing properties:
-    /   receiverName
-    /   exerciseSetId
+    /*
+    shareIn is an object containing properties receiverName and exerciseSetId
     */
     Client.shareExerciseSet = function(sharerId, shareIn, cb) {
         try {
@@ -365,13 +369,12 @@ module.exports = function(Client) {
         }
     );
 
-    /* shareIn is an object containing properties:
-    /   receiverName
-    /   exerciseSetId
+    /*
+    shareIn is an object containing properties receiverName and exerciseSetId
     */
     Client.unshareExerciseSet = function(sharerId, shareIn, cb) {
         try {
-            Client.findOne({
+            return Client.findOne({
                 where: {
                     username: shareIn.receiverName
                 }
@@ -381,10 +384,9 @@ module.exports = function(Client) {
                             exerciseSetId: shareIn.exerciseSetId,
                             sharerId: sharerId,
                             receiverId: receiver.id
-                }})               
+                }});
             })
-            .then((val) => cb())
-            .catch((err) => cb(err)); 
+            .catch((err) => Promis.reject(err)); 
         }
         catch (err) {
             return cb(err);
@@ -404,17 +406,21 @@ module.exports = function(Client) {
     );
 
     Client.receiveExerciseSet = function(clientId, exerciseSetId, cb) {
-        var receiver;
-        var receivedExerciseSet = null;
+        let tx = null;
         try {
-            Client.findById(clientId)
+            var receiver;
+            var receivedExerciseSet = null;
+            return Client.findById(clientId)
+            .then((transaction) => {
+                tx = transaction;
+            })
             .then((client) => {
                 receiver = client;
                 return client.receivedExerciseSets.findOne({where: {id: exerciseSetId}});
             })
             .then((exerciseSet) => {
                 receivedExerciseSet = exerciseSet;
-                return receiver.exerciseSets.add(exerciseSet);
+                return receiver.exerciseSets.add(exerciseSet, {transaction: tx});
             })
             .then((resolved) => {
                 return app.models.SharedExerciseSet.destroyAll({
@@ -422,17 +428,19 @@ module.exports = function(Client) {
                         receiverId: clientId,
                         exerciseSetId: exerciseSetId
                     }
-                })
+                }, {transaction: tx});
             })
             .then((resolved) => {
-                cb(receivedExerciseSet);
-                return Promise.resolve();
+                tx.commit();
+                return Promise.resolve(receivedExerciseSet);
             })
             .catch((err) => {
-                cb(err);
+                if (tx) tx.rollback();
+                return Promise.reject(err);
             });
         }
-        catch(err) {
+        catch (err) {
+            if (tx) tx.rollback();
             cb(err);
         }
     }
