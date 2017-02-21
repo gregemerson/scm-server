@@ -44,7 +44,7 @@ module.exports = function(Exerciseset) {
         try {
             data.created = Date.now();
             let limit = constraints.exercise.maxPerExerciseSet;
-            return  app.models.Exercise.count({exerciseSetId: 1})
+            return  app.models.Exercise.count({exerciseSetId: id})
             .then((result) => {
                 if (result >= limit) {
                     return Promise.reject('No more exercises can be added');
@@ -74,7 +74,9 @@ module.exports = function(Exerciseset) {
             })
             .catch((reason) => {
                 if (tx) tx.rollback();
-                return Promise.reject(reason);
+                let err = new Error(reason);
+                err.status = 400;
+                return Promise.resolve(err);
             });
         }
         catch(err) {

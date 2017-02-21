@@ -386,7 +386,7 @@ module.exports = function(Client) {
                             receiverId: receiver.id
                 }});
             })
-            .catch((err) => Promis.reject(err)); 
+            .catch((err) => Promis.resolve(err)); 
         }
         catch (err) {
             return cb(err);
@@ -436,7 +436,7 @@ module.exports = function(Client) {
             })
             .catch((err) => {
                 if (tx) tx.rollback();
-                return Promise.reject(err);
+                return Promise.resolve(err);
             });
         }
         catch (err) {
