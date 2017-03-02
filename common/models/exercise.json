@@ -37,6 +37,11 @@
       "type": "belongsTo",
       "model": "ExerciseSet",
       "foreignKey": ""
+    },
+    "client": {
+      "type": "belongsTo",
+      "model": "Client",
+      "foreignKey": "ownerId"
     }
   },
   "acls": [
@@ -46,6 +51,13 @@
       "principalId": "administrator",
       "permission": "ALLOW",
       "model": "Exercise"
+    },
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "$unauthenticated",
+      "permission": "DENY",
+      "model": "ExerciseSet"
     },
     {
       "accessType": "READ",
@@ -64,22 +76,15 @@
     {
       "accessType": "WRITE",
       "principalType": "ROLE",
-      "principalId": "guest",
-      "permission": "DENY",
-      "model": "Exercise"
-    },
-    {
-      "accessType": "EXECUTE",
-      "principalType": "ROLE",
-      "principalId": "guest",
+      "principalId": "@everyone",
       "permission": "DENY",
       "model": "Exercise"
     },
     {
       "accessType": "*",
       "principalType": "ROLE",
-      "principalId": "$unauthenticated",
-      "permission": "DENY",
+      "principalId": "@owner",
+      "permission": "ALLOW",
       "model": "Exercise"
     }
   ],

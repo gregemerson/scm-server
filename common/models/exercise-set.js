@@ -30,13 +30,12 @@ module.exports = function(Exerciseset) {
 
         next();
     });
-/*
+
     // For diagnostics
     Exerciseset.beforeRemote('**', function(ctx, exerciseSet, next) {
-        console.log(ctx.methodString, 'was invoked remotely');
+        console.log(ctx.methodString, 'was invoked remotely ExerciseSet');
         next();
     });
-*/
 
     // Post (create) new exercise in this exercise set
     Exerciseset.createdExercises = function(id, data, cb) {
