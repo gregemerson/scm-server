@@ -317,7 +317,7 @@ module.exports = function(Client) {
                 return cb(Client.createClientError("Cannot share with guest"));
             }
             shareIn.created = Date.now();
-            Client.findOne({where: {username: shareIn.receiverName}})
+            return Client.findOne({where: {username: shareIn.receiverName}})
             .then((result) => {
                 if (!result) {
                     return Promise.reject('Receiver does not exist');
@@ -355,7 +355,7 @@ module.exports = function(Client) {
                 return app.models.SharedExerciseSet.create(shareIn);
             })
             .then((result) => {
-                return Promise.resolve(Client.toShareDescriptor(exerciseSet, shareIn.receiverName))
+                return Promise.resolve(Client.toShareDescriptor(exerciseSet, shareIn.receiverName));
             })
             .catch((reason) => {
                 let err = new Error(reason);
@@ -448,7 +448,9 @@ module.exports = function(Client) {
                             receiverId: receiver.id
                 }});
             })
-            .catch((err) => Promis.resolve(err)); 
+            .catch((err) => {
+                return Promis.resolve(err)
+            }); 
         }
         catch (err) {
             return cb(err);
