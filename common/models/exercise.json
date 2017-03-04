@@ -21,11 +21,6 @@
       "required": false,
       "default": "#"
     },
-    "category": {
-      "type": "string",
-      "required": false,
-      "default": "Uncategorized"
-    },
     "comments": {
       "type": "string",
       "required": false

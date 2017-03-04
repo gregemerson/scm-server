@@ -26,16 +26,6 @@
       "required": false,
       "default": "Uncategorized"
     },
-    "disabledExercises": {
-      "type": "array",
-      "required": false,
-      "default": "[]"
-    },
-    "exerciseOrdering": {
-      "type": "array",
-      "required": false,
-      "default": "[]"
-    },
     "comments": {
       "type": "string",
       "required": false

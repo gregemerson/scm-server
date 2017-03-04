@@ -49,6 +49,13 @@
     {
       "accessType": "*",
       "principalType": "ROLE",
+      "principalId": "administrator",
+      "permission": "ALLOW",
+      "model": "Exercise"
+    },
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
       "principalId": "$everyone",
       "permission": "DENY"
     },

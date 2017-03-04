@@ -40,11 +40,6 @@ module.exports = function(Client) {
                 return exerciseSet.destroy();
             }
             next();
-            return Promise.resolve();
-        })
-        .then(() => {
-            next();
-            return Promise.resolve();
         })
         .catch((err) => {
             next(err);
@@ -177,8 +172,6 @@ module.exports = function(Client) {
     Client.toShareDescriptor = (exerciseSet, username) => {
         exerciseSet.__data['username'] = username;
         delete exerciseSet.__data.created;
-        delete exerciseSet.__data.disabledExercises;
-        delete exerciseSet.__data.exerciseOrdering;
         delete exerciseSet.__data.ownerId;
     }
 
@@ -241,54 +234,50 @@ module.exports = function(Client) {
         var cli = null;
         var tx = null;
         try {
-            Client.beginTransaction({timeout: 10000}, function(err, trans) {
-                if (err) return cb(err);
+            return Client.beginTransaction({timeout: 10000})
+            .then((trans) => {
                 tx = trans;
-                app.models.Subscription.create(Client.initialSubscription(), {transaction: tx})
-                .then((subscription) => {
-                    sub = subscription;
-                    initializer.subscriptionId = subscription.id;
-                    return app.models.UserSettings.create(Client.defaultUserSettings(), {transaction: tx})
-                })
-                .then((settings) => {
-                    set = settings;
-                    initializer.usersettingsId = settings.id;
-                    return Client.create(initializer, {transaction: tx});
-                })
-                .then((client) => {
-                    cli = client;
-                    return set.updateAttributes({clientId: cli.id}, {transaction: tx});
-                })
-                .then((settings) => {
-                    return sub.updateAttributes({clientId: cli.id}, {transaction: tx});
-                })
-                .then((subscription) => {
-                    return app.models.ExerciseSet.find({where: {public: 1}});
-                })
-                .then((sets) => {
-                    var promises = [];
-                    sets.forEach((exerciseSet) => {
-                        promises.push(cli.exerciseSets.add(exerciseSet, {transaction: tx}));
-                    });
-                    return Promise.all(promises);
-                })
-                .then((results) => {
-                    tx.commit();
-                    return cb(null, {id: cli.id});
-                })
-                .catch((err) => {
-                    console.log(err);
-                    return Client.rollbackOnError(err, tx, cb);
+                return app.models.Subscription.create(Client.initialSubscription(), {transaction: tx})                   
+            })
+            .then((subscription) => {
+                sub = subscription;
+                initializer.subscriptionId = subscription.id;
+                return app.models.UserSettings.create(Client.defaultUserSettings(), {transaction: tx})
+            })
+            .then((settings) => {
+                set = settings;
+                initializer.usersettingsId = settings.id;
+                return Client.create(initializer, {transaction: tx});
+            })
+            .then((client) => {
+                cli = client;
+                return set.updateAttributes({clientId: cli.id}, {transaction: tx});
+            })
+            .then((settings) => {
+                return sub.updateAttributes({clientId: cli.id}, {transaction: tx});
+            })
+            .then((subscription) => {
+                return app.models.ExerciseSet.find({where: {public: 1}});
+            })
+            .then((sets) => {
+                var promises = [];
+                sets.forEach((exerciseSet) => {
+                    promises.push(cli.exerciseSets.add(exerciseSet, {transaction: tx}));
                 });
+                return Promise.all(promises);
+            })
+            .then((results) => {
+                tx.commit();
+                return Promise.resolve({id: cli.id});
+            })
+            .catch((err) => {
+                if (tx) tx.rollback();
+                Promise.resolve(err);
             });
         }
         catch (err) {
-            if (tx) {
-                return Client.rollbackOnError(err, tx, cb);
-            }
-            else {
-                return cb(err);
-            }
+            if (tx) tx.rollback();
+            return cb(err);
         }
     }
 
@@ -453,7 +442,7 @@ module.exports = function(Client) {
             }); 
         }
         catch (err) {
-            return cb(err);
+            cb(err);
         }
     }
 
@@ -470,40 +459,59 @@ module.exports = function(Client) {
     );
 
     Client.receiveExerciseSet = function(clientId, exerciseSetId, cb) {
-        let tx = null;
+        let tx;
+        var receiver;
+        var receivedExerciseSet;
         try {
-            var receiver;
-            var receivedExerciseSet = null;
-            return Client.findById(clientId)
-            .then((transaction) => {
-                tx = transaction;
-            })
-            .then((client) => {
-                receiver = client;
-                return client.receivedExerciseSets.findOne({where: {id: exerciseSetId}});
-            })
-            .then((exerciseSet) => {
-                receivedExerciseSet = exerciseSet;
-                return receiver.exerciseSets.add(exerciseSet, {transaction: tx});
-            })
-            .then((resolved) => {
-                return app.models.SharedExerciseSet.destroyAll({
-                    where: {
-                        receiverId: clientId,
-                        exerciseSetId: exerciseSetId
+            return Client.beginTransaction({timeout: 10000})
+                .then((trans) => {
+                    tx = trans;
+                    return app.models.SharedExerciseSet.findOne({where: {receiverId: clientId, exerciseSetId: exerciseSetId}});
+                })
+                .then((share) => {
+                    if (!share) {
+                        return Promise.reject('Exercise set has not been shared with user');
                     }
-                }, {transaction: tx});
-            })
-            .then((resolved) => {
-                tx.commit();
-                return Promise.resolve(receivedExerciseSet);
-            })
-            .catch((err) => {
-                if (tx) tx.rollback();
-                return Promise.resolve(err);
-            });
+                    return Client.findById(clientId)
+                })
+                .then((client) => {
+                    receiver = client;
+                    return receiver.exerciseSets.findOne({where: {id: exerciseSetId}});
+                })
+                .then((exerciseSet) => {
+                    if (exerciseSet) {
+                        return Promise.reject('User already has exercise set');
+                    }
+                    return app.models.ExerciseSet.findOne({where: {id: exerciseSetId}});
+                })
+                .then((exerciseSet) => {
+                    console.log('adding set.....')
+                    console.dir(exerciseSet)
+                    receivedExerciseSet = exerciseSet;
+                    return receiver.exerciseSets.add(exerciseSet, {transaction: tx});
+                })
+                .then((resolved) => {
+                    console.log('1')
+                    return app.models.SharedExerciseSet.destroyAll({
+                        where: {
+                            and: [
+                                {receiverId: clientId},
+                                {exerciseSetId: exerciseSetId}
+                            ]
+                        }
+                    }, {transaction: tx});
+                })
+                .then((resolved) => {
+                    tx.commit();
+                    Promise.resolve(receivedExerciseSet);
+                })
+                .catch((err) => {
+                    if (tx) tx.rollback();
+                    Promise.resolve(err);
+                });
         }
         catch (err) {
+             console.log('4')
             if (tx) tx.rollback();
             cb(err);
         }

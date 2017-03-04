@@ -60,13 +60,7 @@ module.exports = function(Exerciseset) {
             })
             .then((exercise) => {
                 ex = exercise;
-                let ordering = JSON.parse(es.exerciseOrdering);
-                ordering.push(exercise.id);
-                es.exerciseOrdering = JSON.stringify(ordering);
-                return es.save({transaction: tx});         
-            })
-            .then((set) => {
-                return tx.commit();
+                return tx.commit();         
             })
             .then(() => {
                 return Promise.resolve(ex);
