@@ -48,6 +48,14 @@
       "foreignKey": "exerciseSetId"
     }
   },
-  "acls": [],
+  "acls": [
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "administrator",
+      "permission": "ALLOW",
+      "model": "ExerciseSet"
+    }
+  ],
   "methods": {}
 }
