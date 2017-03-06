@@ -59,7 +59,7 @@
   },
   "SharedExerciseSet": {
     "dataSource": "mysqlDs",
-    "public": false
+    "public": true
   },
   "Subscription": {
     "dataSource": "mysqlDs",
