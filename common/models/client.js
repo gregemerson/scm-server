@@ -314,10 +314,10 @@ module.exports = function(Client) {
         shareIn.created = Date.now();
         try {
             return (new Promise((resolve, reject) => {
-                if (shareIn.receiverName == constraints.user.guestUsername) {
-                    reject("Cannot share with guest");
+                if (shareIn.receiverName != constraints.user.guestUsername) {
+                    resolve(null);
                 }
-                resolve(null);
+                reject("Cannot share with guest");
             }))
             .then(() => {
                 return Client.find({where: {or: [{username: shareIn.receiverName}, {id: sharerId}]}})
@@ -424,23 +424,28 @@ module.exports = function(Client) {
             return Client.beginTransaction({timeout: 10000})
                 .then((trans) => {
                     tx = trans;
-                    return app.models.SharedExerciseSet.findOne({where: {receiverId: receiverId, exerciseSetId: exerciseSetId}});
+                    return app.models.SharedExerciseSet.findOne({
+                        where: {
+                            and: [
+                                {receiverId: receiverId},
+                                {exerciseSetId: exerciseSetId}
+                            ]}});
                 })
                 .then((share) => {
-                    if (!share) {
-                        return Promise.reject('Exercise set has not been shared with user');
+                    if (share) {
+                        return Client.findById(receiverId);
                     }
-                    return Client.findById(receiverId)
+                    return Promise.reject('Exercise set has not been shared with user');
                 })
                 .then((client) => {
                     receiver = client;
-                    return receiver.exerciseSets.findOne({where: {id: exerciseSetId}});
+                    return receiver.exerciseSets.findById(exerciseSetId);
                 })
                 .then((exerciseSet) => {
-                    if (exerciseSet) {
-                        return Promise.reject('User already has exercise set');
+                    if (!exerciseSet) {
+                        return app.models.ExerciseSet.findById(exerciseSetId);
                     }
-                    return app.models.ExerciseSet.findOne({where: {id: exerciseSetId}});
+                    return Promise.reject('User already has exercise set');
                 })
                 .then((exerciseSet) => {
                     receivedExerciseSet = exerciseSet;
@@ -452,9 +457,7 @@ module.exports = function(Client) {
                             and: [
                                 {receiverId: receiverId},
                                 {exerciseSetId: exerciseSetId}
-                            ]
-                        }
-                    }, {transaction: tx});
+                            ]}}, {transaction: tx});
                 })
                 .then((resolved) => {
                     tx.commit();
@@ -462,8 +465,7 @@ module.exports = function(Client) {
                 })
                 .catch((err) => {
                     if (tx) tx.rollback();
-                    cb(err);
-                    Promise.resolve(err);
+                    Promise.resolve(Client.createError(err));
                 });
         }
         catch (err) {
