@@ -55,13 +55,15 @@
       "accessType": "*",
       "principalType": "ROLE",
       "principalId": "administrator",
-      "permission": "ALLOW"
+      "permission": "ALLOW",
+      "model": "Client"
     },
     {
       "accessType": "*",
       "principalType": "ROLE",
       "principalId": "$owner",
-      "permission": "ALLOW"
+      "permission": "ALLOW",
+      "model": "Client"
     },
     {
       "accessType": "EXECUTE",
@@ -84,7 +86,8 @@
       "principalType": "ROLE",
       "principalId": "$unauthenticated",
       "permission": "ALLOW",
-      "property": "login"
+      "property": "login",
+      "model": "Client"
     },
     {
       "accessType": "EXECUTE",
@@ -93,7 +96,7 @@
       "permission": "ALLOW",
       "property": "createNewUser"
     },
-        {
+    {
       "accessType": "EXECUTE",
       "principalType": "ROLE",
       "principalId": "$owner",

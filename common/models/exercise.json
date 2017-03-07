@@ -52,7 +52,7 @@
       "principalType": "ROLE",
       "principalId": "$unauthenticated",
       "permission": "DENY",
-      "model": "ExerciseSet"
+      "model": "Exercise"
     },
     {
       "accessType": "READ",

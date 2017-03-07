@@ -54,7 +54,14 @@
       "principalType": "ROLE",
       "principalId": "administrator",
       "permission": "ALLOW",
-      "model": "ExerciseSet"
+      "model": "SharedExerciseSet"
+    },
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "@owner",
+      "permission": "ALLOW",
+      "model": "SharedExerciseSet"
     }
   ],
   "methods": {}
