@@ -106,8 +106,7 @@ module.exports = function(Client) {
                 shared: [],
                 received: []
             };
-            var whereClause = receivedOnly ? {receiverId: clientId} : 
-                {where: {or: [{receiverId: clientId}, {sharerId: clientId}]}};
+            var whereClause = {where: {or: [{receiverId: clientId}, {sharerId: clientId}]}};
             var receivedShares = [];
             var sharedShares = [];
             var clientIds = [clientId];
@@ -157,8 +156,8 @@ module.exports = function(Client) {
                     )})
                 return Promise.resolve(result);  
             })
-            .catch((reason) => {         
-                return Promise.resolve(Client.createError('reason'));
+            .catch((reason) => {    
+                return Promise.resolve(Client.createError(reason));
             });
         }
         catch(err) {
@@ -170,9 +169,9 @@ module.exports = function(Client) {
 
     Client.toShareDescriptor = (exerciseSet, share, idsToNames) => {
         exerciseSet.__data['shareId'] = share.id;
-        exerciseSet.__data['receiverName'] = idsToNames(share.receiverId);
+        exerciseSet.__data['receiverName'] = idsToNames[share.receiverId];
         exerciseSet.__data['receiverId'] = share.receiverId;
-        exerciseSet.__data['sharerName'] = idsToNames(share.sharerId);
+        exerciseSet.__data['sharerName'] = idsToNames[share.sharerId];
         exerciseSet.__data['sharerId'] = share.sharerId;
         delete exerciseSet.__data.created;
         delete exerciseSet.__data.ownerId;
@@ -303,7 +302,7 @@ module.exports = function(Client) {
               {arg: 'shareIn', type: 'Object', http: {source: 'body'}, required: true}
             ],
             http: {path: '/:sharerId/shareExerciseSet', verb: 'post'},
-            returns: {arg: 'share', type: 'Object'}
+            returns: {root: 'true', type: 'Object'}
         }
     );
 
@@ -314,7 +313,9 @@ module.exports = function(Client) {
         let receiver = null;
         let sharer = null;
         let exerciseSet = null;
-        shareIn.created = Date.now();
+        let setWhere = {where: {exerciseSetId: shareIn.exerciseSetId}};
+        let newShare = null;
+        let newShareWhere = null;
         try {
             return (new Promise((resolve, reject) => {
                 if (shareIn.receiverName != constraints.user.guestUsername) {
@@ -330,41 +331,63 @@ module.exports = function(Client) {
                     sharerIdx = (clients[0].id == sharerId) ? 0 : 1;
                     sharer = clients[sharerIdx];
                     receiver = clients[(sharerIdx + 1) % 2];
+                    newShare = {
+                        receiverId: receiver.id,
+                        sharerId: sharer.id,
+                        exerciseSetId: shareIn.exerciseSetId,
+                        created: Date.now(),
+                        comments: shareIn.comments
+                    }
+                    newShareWhere = {where: {and: [
+                        {receiverId: receiver.id},
+                        {sharerId: sharer.id},
+                        {exerciseSetId: shareIn.exerciseSetId}
+                    ]}}
                     return Promise.resolve();                  
                 }
                 return Promise.reject('Receiver does not exist');
             })
             .then(() => {
                 if (sharer.username != constraints.user.guestUsername) {
-                    return sharer.exerciseSets.findById(shareIn.exerciseSetId);
+                    return sharer.exerciseSets.findOne(setWhere);
                 }
                 return Promise.reject('Guests cannot share')  
             })
             .then((result) => {
                 if (result) {
                     exerciseSet = result;
-                    return receiver.exerciseSets.findById(shareIn.exerciseSetId);                   
+                    return receiver.exerciseSets.findOne(setWhere);                   
                 }
                 return Promise.reject('Sharer does not have exercise set');
             })
             .then((result) => {
                 if (!result) {
-                    return app.models.SharedExerciseSet.create({
-                                exerciseSetId: shareIn.exerciseSetId,
-                                sharerId: sharer.id,
-                                receiverId: receiver.id
-                            });                    
+                    return app.models.SharedExerciseSet.findOne(newShareWhere);                    
                 }
-                return Promise.reject('Receiver already has exercise set')
+                return Promise.reject('Receiver already has exercise set');
             })
             .then((result) => {
-                return Promise.resolve(result);
+                if (!result) {
+                    return app.models.SharedExerciseSet.create(newShare);
+                }
+                return Promise.reject('Has already been shared')
+            })
+            .then((result) => {
+                idsToNames = {};
+                idsToNames[sharer.id] = sharer.username;
+                idsToNames[receiver.id] = receiver.username;
+                Client.toShareDescriptor(exerciseSet, result, idsToNames);
+                return Promise.resolve(exerciseSet);
             })
             .catch((err) => {
+                console.log('hit catch')
+                console.dir(err)
                 return Promise.resolve(Client.createError(err));
             })
         }
         catch(err) {
+            console.log('did not hit catch')
+            console.dir(err) 
             return cb(Client.createError('Could not share'));
         }
     }
@@ -426,11 +449,11 @@ module.exports = function(Client) {
                 })
                 .then((resolved) => {
                     tx.commit();
-                    Promise.resolve(receivedExerciseSet);
+                    return Promise.resolve(receivedExerciseSet);
                 })
                 .catch((err) => {
                     if (tx) tx.rollback();
-                    Promise.resolve(Client.createError(err));
+                    return Promise.resolve(Client.createError(err));
                 });
         }
         catch (err) {
