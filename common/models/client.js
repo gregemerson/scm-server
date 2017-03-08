@@ -137,6 +137,8 @@ module.exports = function(Client) {
                 return client.receivedExerciseSets({});
             })
             .then((sets) => {
+                console.log('here are the sets ')
+                console.dir(sets)
                 sets.forEach((set) => {
                     receivedExerciseSets[set.id] = set;
                 });
@@ -173,6 +175,7 @@ module.exports = function(Client) {
         exerciseSet.__data['receiverId'] = share.receiverId;
         exerciseSet.__data['sharerName'] = idsToNames[share.sharerId];
         exerciseSet.__data['sharerId'] = share.sharerId;
+        exerciseSet.__data['comments'] = share.comments;
         delete exerciseSet.__data.created;
         delete exerciseSet.__data.ownerId;
     }
@@ -354,8 +357,6 @@ module.exports = function(Client) {
             })
             .then((result) => {
                 if (result) {
-                    console.log('return exercise set ')
-                    console.dir(result)
                     return receiver.exerciseSets.findOne(setWhere);                   
                 }
                 return Promise.reject('Sharer does not have exercised set');
@@ -383,14 +384,10 @@ module.exports = function(Client) {
                 return Promise.resolve(result);
             })
             .catch((err) => {
-                console.log('hit catch')
-                console.dir(err)
                 return Promise.resolve(Client.createError(err));
             })
         }
         catch(err) {
-            console.log('did not hit catch')
-            console.dir(err) 
             return cb(Client.createError('Could not share'));
         }
     }
@@ -403,7 +400,7 @@ module.exports = function(Client) {
               {arg: 'exerciseSetId', type: 'number', required: true}
             ],
           http: {path: '/:receiverId/receiveExerciseSet/:exerciseSetId', verb: 'get'},
-          returns: {arg: 'receivedExerciseSet', type: 'Object'}
+          returns: {root: 'true', type: 'Object'}
         }
     );
 
