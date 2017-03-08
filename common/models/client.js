@@ -312,7 +312,6 @@ module.exports = function(Client) {
     Client.shareExerciseSet = function(sharerId, shareIn, cb) {
         let receiver = null;
         let sharer = null;
-        let exerciseSet = null;
         let setWhere = {where: {exerciseSetId: shareIn.exerciseSetId}};
         let newShare = null;
         let newShareWhere = null;
@@ -355,10 +354,11 @@ module.exports = function(Client) {
             })
             .then((result) => {
                 if (result) {
-                    exerciseSet = result;
+                    console.log('return exercise set ')
+                    console.dir(result)
                     return receiver.exerciseSets.findOne(setWhere);                   
                 }
-                return Promise.reject('Sharer does not have exercise set');
+                return Promise.reject('Sharer does not have exercised set');
             })
             .then((result) => {
                 if (!result) {
@@ -373,11 +373,14 @@ module.exports = function(Client) {
                 return Promise.reject('Has already been shared')
             })
             .then((result) => {
+                return app.models.ExerciseSet.findById(shareIn.exerciseSetId);
+            })
+            .then((result) => {
                 idsToNames = {};
                 idsToNames[sharer.id] = sharer.username;
                 idsToNames[receiver.id] = receiver.username;
-                Client.toShareDescriptor(exerciseSet, result, idsToNames);
-                return Promise.resolve(exerciseSet);
+                Client.toShareDescriptor(result, newShare, idsToNames);
+                return Promise.resolve(result);
             })
             .catch((err) => {
                 console.log('hit catch')
