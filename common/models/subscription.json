@@ -25,10 +25,10 @@
       "type": "belongsTo",
       "model": "Client",
       "foreignKey": ""
-    }   
+    }
   },
   "acls": [
-      {
+    {
       "accessType": "*",
       "principalType": "ROLE",
       "principalId": "$everyone",

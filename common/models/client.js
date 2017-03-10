@@ -20,6 +20,33 @@ module.exports = function(Client) {
         next(Client.createClientError('Create should not being called directly.'));
     });
 
+    Client.afterRemote('create', function(context, user, next) {
+        console.log('> user.afterRemote triggered');
+
+        var options = {
+        type: 'email',
+        to: user.email,
+        from: 'noreply@noreply.com',
+        subject: 'Thanks for registering.',
+        template: path.resolve(__dirname, '../../server/views/verify.ejs'),
+        redirect: '/verified',
+        user: user
+        };
+
+        user.verify(options, function(err, response) {
+            if (err) {
+                User.deleteById(user.id);
+                return next(err);
+            }
+            console.log('> verification email sent:', response);
+            context.res.render('response', {
+                title: 'Signed up successfully',
+                content: 'Please check your email and click on the verification ' +
+                    'link before logging in.'
+            });
+        });
+    });
+
     Client.beforeRemote('*.__create__exerciseSets', function(ctx, instance, next) {
         ctx.req.body['created'] = new Date();
         ctx.req.body['ownerId'] = ctx.req.accessToken.userId;

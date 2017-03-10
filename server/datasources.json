@@ -7,5 +7,24 @@
     "password": "Thrackle912?",
     "name": "mysqlDs",
     "connector": "mysql"
+  },
+  "scmEmail": {
+    "name": "scmEmail",
+    "connector": "mail",
+    "transports": [
+      {
+        "type": "smtp",
+        "host": "localhost",
+        "secure": false,
+        "port": 2500,
+        "tls": {
+          "rejectUnauthorized": false
+        },
+        "auth": {
+          "user": "mailslurper",
+          "pass": "mailslurper"
+        }
+      }
+    ]
   }
 }
