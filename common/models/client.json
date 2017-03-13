@@ -24,14 +24,6 @@
   },
   "validations": [],
   "relations": {
-    "userSettings": {
-      "type": "hasOne",
-      "model": "UserSettings"
-    },
-    "subscription": {
-      "type": "hasOne",
-      "model": "Subscription"
-    },
     "exerciseSets": {
       "type": "hasMany",
       "model": "ExerciseSet",

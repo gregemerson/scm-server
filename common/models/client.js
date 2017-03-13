@@ -1,13 +1,7 @@
-/*
-    Business Rules of Note.
-    - Access token don't (virtually) expire.
-    - Clients can have only one access token at a time.
-    - Guests cannot login or logout and have only read access throughout
-    - When no client references an exercise set, the set will be deleted
-    - 
-*/
 
 module.exports = function(Client) {
+    var config = require('../../server/config.json');
+    var path = require('path');
     var app = require('../../server/server');
     var constraints = require('../constraints');
 
@@ -20,31 +14,52 @@ module.exports = function(Client) {
         next(Client.createClientError('Create should not being called directly.'));
     });
 
-    Client.afterRemote('create', function(context, user, next) {
-        console.log('> user.afterRemote triggered');
-
-        var options = {
-        type: 'email',
-        to: user.email,
-        from: 'noreply@noreply.com',
-        subject: 'Thanks for registering.',
-        template: path.resolve(__dirname, '../../server/views/verify.ejs'),
-        redirect: '/verified',
-        user: user
-        };
-
-        user.verify(options, function(err, response) {
-            if (err) {
-                User.deleteById(user.id);
-                return next(err);
-            }
-            console.log('> verification email sent:', response);
-            context.res.render('response', {
-                title: 'Signed up successfully',
-                content: 'Please check your email and click on the verification ' +
-                    'link before logging in.'
+    Client.verificationFailed = function(error, client, next) {
+        error.statusCode = 400;
+        try {
+            client.destroy(function(e) {
+                // @todo log this stranded client record
+                if (e) {
+                    console.log('> client record orphaned -- '  +  e);
+                }
             });
-        });
+            return next(error);
+        }
+        catch(e) {
+            // @todo logging
+            return next(error);
+        }
+    }
+
+    Client.afterRemote('createNewUser', function(context, unused, next) {
+        let client = context.args.options.newClient;
+        delete context.args.options.newClient;
+        try {
+            let options = {
+                type: 'email',
+                to:client.email,
+                from: 'noreply@stick-ctrl.com',
+                template: 'views/verify.ejs',
+                redirect: '/verification.html',
+                tokenGenerator: function (user, cb) { cb("random-token"); }
+            };
+
+            client.verify(options, function(err, response) {
+                if (err) {
+                    // @todo error logging
+                    return Client.verificationFailed(err, client, next);
+                }
+                context.result = {
+                    title: 'Signed up successfully',
+                    content: 'Please check your email and click on the verification ' +
+                        'link before logging in.'
+                };
+                next();
+            });
+        }
+        catch (err) {
+            Client.verificationFailed(err, client, next);
+        }
     });
 
     Client.beforeRemote('*.__create__exerciseSets', function(ctx, instance, next) {
@@ -233,7 +248,8 @@ module.exports = function(Client) {
         return cb(err); 
     }
 
-    Client.defaultUserSettings = function() {
+    Client.defaultUserSettings = function(clientId) {
+        this.clientId = clientId;
         this.currentExerciseSet = -1;
         this.numberOfRepititions = 20;
         this.minTempo = 80;
@@ -241,76 +257,77 @@ module.exports = function(Client) {
         this.tempoStep = 10;       
     }
 
-    Client.initialSubscription = function() {
+    Client.initialSubscription = function(clientId) {
+        this.clientId = clientId;
         this.expires = null;
         this.kind = 1;
-        this.maxExerciseSets = 2;
+        this.maxExerciseSets = 1;
     }
 
     Client.remoteMethod(
         'createNewUser',
         {
           accepts: [
-              {arg: 'initializer', type: 'Object', http: {source: 'body'}, required: true}
+              {arg: 'initializer', type: 'Object', http: {source: 'body'}, required: true},
+              {arg: "options", type: "object", http: "optionsFromRequest"}
             ],
             http: {path: '/createNewUser', verb: 'post'},
-            returns: {arg: 'userInfo', type: 'Object'}
+            returns: {root: 'true', type: 'any'}
         }
     );
 
-    Client.createNewUser = function(initializer, cb) {
+    Client.createNewUser = function(initializer, options, cb) {
         initializer.created = new Date();
         initializer.lastUpdated = new Date();
-        var sub = null;
-        var set = null;
-        var cli = null;
+        var client = null;
         var tx = null;
         try {
             return Client.beginTransaction({timeout: 10000})
             .then((trans) => {
                 tx = trans;
-                return app.models.Subscription.create(Client.initialSubscription(), {transaction: tx})                   
+                return Client.find({where: {or: [
+                    {username: initializer.username},
+                    {email: initializer.email}
+                ]}});
+            })
+            .then((result) => {
+                if (result.length == 0) {
+                    return Client.create(initializer, {transaction: tx});
+                }
+                if (result.username == initializer.username) {
+                    return Promise.reject('User name is already in use');
+                }
+                return Promise.reject('Email is already in use')
+            })
+            .then((cli) => {
+                client = cli;
+                return app.models.Subscription.create(Client.initialSubscription(client.id), {transaction: tx})                   
             })
             .then((subscription) => {
-                sub = subscription;
-                initializer.subscriptionId = subscription.id;
-                return app.models.UserSettings.create(Client.defaultUserSettings(), {transaction: tx})
+                return app.models.UserSettings.create(Client.defaultUserSettings(client.id), {transaction: tx})
             })
             .then((settings) => {
-                set = settings;
-                initializer.usersettingsId = settings.id;
-                return Client.create(initializer, {transaction: tx});
-            })
-            .then((client) => {
-                cli = client;
-                return set.updateAttributes({clientId: cli.id}, {transaction: tx});
-            })
-            .then((settings) => {
-                return sub.updateAttributes({clientId: cli.id}, {transaction: tx});
-            })
-            .then((subscription) => {
                 return app.models.ExerciseSet.find({where: {public: 1}});
             })
-            .then((sets) => {
-                var promises = [];
-                sets.forEach((exerciseSet) => {
-                    promises.push(cli.exerciseSets.add(exerciseSet, {transaction: tx}));
-                });
-                return Promise.all(promises);
+            .then((exerciseSets) => {
+                client.exerciseSets.add(exerciseSets, {transaction: tx});
             })
             .then((results) => {
                 tx.commit();
-                return Promise.resolve({id: cli.id});
+                options.newClient = client;
+                return Promise.resolve();
             })
             .catch((err) => {
+                console.log('create user error ')
+                console.dir(err)
                 if (tx) tx.rollback();
-                cb(Client.createError(err));
-                Promise.resolve(err);
+                tx = null;
+                return Promise.resolve(Client.createError(err));
             });
         }
         catch (err) {
             if (tx) tx.rollback();
-            return cb(err);
+            return cb(Client.createError(err));
         }
     }
 
@@ -318,7 +335,7 @@ module.exports = function(Client) {
         return {
             error: {
                 statusCode: 400,
-                message: message,
+                message: message.toString(),
                 errorCode: "PRECONDITIONS_ERROR"
             }
         }

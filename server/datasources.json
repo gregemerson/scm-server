@@ -14,15 +14,11 @@
     "transports": [
       {
         "type": "smtp",
-        "host": "localhost",
+        "host": "127.0.0.1",
         "secure": false,
-        "port": 2500,
+        "port": 1025,
         "tls": {
           "rejectUnauthorized": false
-        },
-        "auth": {
-          "user": "mailslurper",
-          "pass": "mailslurper"
         }
       }
     ]
