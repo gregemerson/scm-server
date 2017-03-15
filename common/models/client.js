@@ -248,9 +248,9 @@ module.exports = function(Client) {
         return cb(err); 
     }
 
-    Client.defaultUserSettings = function(clientId) {
+    Client.defaultUserSettings = function(clientId, exerciseSetId) {
         this.clientId = clientId;
-        this.currentExerciseSet = -1;
+        this.currentExerciseSet = exerciseSetId;
         this.numberOfRepititions = 20;
         this.minTempo = 80;
         this.maxTempo = 80;
@@ -279,19 +279,20 @@ module.exports = function(Client) {
     Client.createNewUser = function(initializer, options, cb) {
         initializer.created = new Date();
         initializer.lastUpdated = new Date();
+        var defaultExerciseSetId = -1;
         var client = null;
         var tx = null;
         try {
             return Client.beginTransaction({timeout: 10000})
             .then((trans) => {
                 tx = trans;
-                return Client.find({where: {or: [
+                return Client.findOne({where: {or: [
                     {username: initializer.username},
                     {email: initializer.email}
                 ]}});
             })
             .then((result) => {
-                if (result.length == 0) {
+                if (!result) {
                     return Client.create(initializer, {transaction: tx});
                 }
                 if (result.username == initializer.username) {
@@ -304,13 +305,17 @@ module.exports = function(Client) {
                 return app.models.Subscription.create(Client.initialSubscription(client.id), {transaction: tx})                   
             })
             .then((subscription) => {
-                return app.models.UserSettings.create(Client.defaultUserSettings(client.id), {transaction: tx})
-            })
-            .then((settings) => {
                 return app.models.ExerciseSet.find({where: {public: 1}});
-            })
+            })  
             .then((exerciseSets) => {
-                client.exerciseSets.add(exerciseSets, {transaction: tx});
+                if (exerciseSets.length > 0) {
+                    defaultExerciseSetId = exerciseSets[0].id;
+                }
+                return client.exerciseSets.add(exerciseSets, {transaction: tx});
+            })
+            .then((result) => {
+                return app.models.UserSettings.create(Client.defaultUserSettings(
+                        client.id, defaultExerciseSetId), {transaction: tx});
             })
             .then((results) => {
                 tx.commit();

@@ -40,6 +40,14 @@
       "model": "ExerciseSet",
       "foreignKey": "sharerId",
       "through": "SharedExerciseSet"
+    },
+    "userSettings": {
+      "type": "hasOne",
+      "model": "UserSettings"
+    },
+    "subscription": {
+      "type": "hasOne",
+      "model": "Subscription"
     }
   },
   "acls": [
